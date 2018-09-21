@@ -7,27 +7,24 @@
 //
 
 import UIKit
-import CoreData
+import RealmSwift
 
 class CategaryTableViewController: UITableViewController {
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
-    var itemArray = [Category]()
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("category.plist")
+    let realm = try! Realm()
+    var categories:Results<Category>?
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadItems()
+        loadCategories()
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return itemArray.count
+        return categories?.count ?? 1
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "categaryCell", for: indexPath)
-        
-        let item = itemArray[indexPath.row]
-        cell.textLabel?.text = item.name
+        cell.textLabel?.text = categories?[indexPath.row].name ?? "No Category Added yet!"
         return cell
     }
     
@@ -39,7 +36,7 @@ class CategaryTableViewController: UITableViewController {
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         let destinationVC = segue.destination as! TodoListTableViewController
         if let indexPath = tableView.indexPathForSelectedRow {
-            destinationVC.category = itemArray[indexPath.row]
+            destinationVC.category = categories?[indexPath.row]
         }
     }
     
@@ -49,11 +46,9 @@ class CategaryTableViewController: UITableViewController {
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             // What will happen when user click the Add Item
             
-            let newItem = Category(context: self.context)
-            newItem.name = text.text ?? "New Item"
-            self.itemArray.append(newItem)
-
-            self.saveItems()
+            let category = Category()
+            category.name = text.text ?? "New Item"
+            self.save(category:category)
         }
         
         alert.addAction(action)
@@ -65,22 +60,20 @@ class CategaryTableViewController: UITableViewController {
     }
     
     // Mark: Model Manupulation Methods
-    func saveItems() {
+    func save(category:Category) {
         
         do {
-            try context.save()
+            try realm.write {
+                realm.add(category)
+            }
         } catch {
             print(error)
         }
         self.tableView.reloadData()
     }
     
-    func loadItems(with request:NSFetchRequest<Category> = Category.fetchRequest()){
-        do{
-            itemArray = try context.fetch(request)
-            tableView.reloadData()
-        }catch{
-            print(error)
-        }
+    func loadCategories(){
+        categories = realm.objects(Category.self)
+        tableView.reloadData()
     }
 }
