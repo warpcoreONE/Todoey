@@ -8,11 +8,13 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
 class TodoListTableViewController: SwipeTableViewController {
     let realm = try! Realm()
     var items:Results<Item>?
     
+    @IBOutlet weak var searchBar: UISearchBar!
     var category:Category? {
         didSet{
             loadItems()
@@ -23,6 +25,26 @@ class TodoListTableViewController: SwipeTableViewController {
 
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        title = category?.name
+        guard let colorHex = category?.backgroundColor else { fatalError() }
+        updateNavBar(withHexCode: colorHex)
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        updateNavBar(withHexCode: "1D9BF6")
+        
+    }
+    // MARK: - Nav bar setup
+    func updateNavBar(withHexCode colorHexCode:String){
+        guard let navBar = navigationController?.navigationBar else {fatalError("Nav bar doesn't exist")}
+        guard let tintColor = UIColor(hexString: colorHexCode) else { fatalError("Can Not find category background color!")}
+        navBar.barTintColor = tintColor
+        navBar.tintColor = ContrastColorOf(tintColor, returnFlat: true)
+        navBar.largeTitleTextAttributes = [NSAttributedString.Key.foregroundColor: ContrastColorOf(tintColor, returnFlat: true)]
+        searchBar.barTintColor = navBar.barTintColor
+        
+    }
     // MARK: - Table view data source
 
     override func numberOfSections(in tableView: UITableView) -> Int {
@@ -40,6 +62,10 @@ class TodoListTableViewController: SwipeTableViewController {
         if let item = items?[indexPath.row] {
             cell.textLabel?.text = item.title
             cell.accessoryType = item.done ? .checkmark : .none
+            if let color = UIColor(hexString: category!.backgroundColor)?.darken(byPercentage: CGFloat(indexPath.row) / CGFloat(items!.count)) {
+                cell.backgroundColor = color
+                cell.textLabel?.textColor = ContrastColorOf(color, returnFlat: true)
+            }
         }else
         {
             cell.textLabel?.text = "No Item"
